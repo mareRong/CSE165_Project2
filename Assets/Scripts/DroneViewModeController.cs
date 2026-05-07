@@ -21,9 +21,10 @@ public class DroneViewModeController : MonoBehaviour
     private const string CockpitResourcePath = "Schweizer SGS 2-33A";
     private static readonly Vector3 ChaseOffset = new Vector3(0f, 2.2f, -5.5f);
     private static readonly Vector3 CockpitLocalPosition = new Vector3(0f, 0f, 0f);
-    private static readonly Vector3 ImportedCockpitLocalPosition = new Vector3(0f, -0.2f, 0.15f);
-    private static readonly Vector3 ImportedCockpitLocalRotation = new Vector3(0f, 0f, 0f);
     private static readonly Vector3 ImportedCockpitLocalScale = new Vector3(0.16f, 0.16f, 0.16f);
+    private static readonly Vector3 DesiredSeatAnchorPosition = new Vector3(0f, -0.55f, -0.15f);
+    private static readonly Vector3 DesiredPanelAnchorPosition = new Vector3(0f, -0.08f, 0.42f);
+    private static readonly Vector3 ImportedDroneVisualScale = new Vector3(0.16f, 0.16f, 0.16f);
 
     private Transform droneRoot;
     private Camera viewCamera;
@@ -288,9 +289,8 @@ public class DroneViewModeController : MonoBehaviour
 
         var cockpitInstance = Object.Instantiate(importedCockpitPrefab, cockpitRoot.transform);
         cockpitInstance.name = "Imported Drone Cockpit";
-        cockpitInstance.transform.localPosition = ImportedCockpitLocalPosition;
-        cockpitInstance.transform.localEulerAngles = ImportedCockpitLocalRotation;
         cockpitInstance.transform.localScale = ImportedCockpitLocalScale;
+        AlignImportedCockpit(cockpitRoot.transform, cockpitInstance.transform);
         KeepOnlyCockpitAndGlass(cockpitRoot.transform);
         StripColliders(cockpitRoot.transform);
         return cockpitRoot;
@@ -298,6 +298,13 @@ public class DroneViewModeController : MonoBehaviour
 
     private GameObject CreateDroneVisual()
     {
+        var importedDroneVisual = TryCreateImportedDroneVisual();
+        if (importedDroneVisual != null)
+        {
+            importedDroneVisual.SetActive(false);
+            return importedDroneVisual;
+        }
+
         var droneRootVisual = new GameObject("Drone Body Visual");
         droneRootVisual.transform.localPosition = Vector3.zero;
         droneRootVisual.transform.localRotation = Quaternion.identity;
@@ -328,6 +335,30 @@ public class DroneViewModeController : MonoBehaviour
 
         droneRootVisual.SetActive(false);
         return droneRootVisual;
+    }
+
+    private GameObject TryCreateImportedDroneVisual()
+    {
+        if (importedCockpitPrefab == null)
+        {
+            importedCockpitPrefab = Resources.Load<GameObject>(CockpitResourcePath);
+        }
+
+        if (importedCockpitPrefab == null)
+        {
+            return null;
+        }
+
+        var droneVisualRoot = new GameObject("Imported Drone Body Visual");
+        droneVisualRoot.transform.localPosition = Vector3.zero;
+        droneVisualRoot.transform.localRotation = Quaternion.identity;
+
+        var droneInstance = Object.Instantiate(importedCockpitPrefab, droneVisualRoot.transform);
+        droneInstance.name = "Imported Drone Body";
+        droneInstance.transform.localScale = ImportedDroneVisualScale;
+        AlignImportedModelForward(droneVisualRoot.transform, droneInstance.transform);
+        StripColliders(droneVisualRoot.transform);
+        return droneVisualRoot;
     }
 
     private void ApplyViewMode(ViewMode nextMode)
@@ -457,6 +488,53 @@ public class DroneViewModeController : MonoBehaviour
         }
     }
 
+    private static void AlignImportedCockpit(Transform parentRoot, Transform modelRoot)
+    {
+        AlignImportedModelForward(parentRoot, modelRoot);
+
+        var seatAnchor = FindChildByName(modelRoot, "Seat");
+        var panelAnchor = FindChildByName(modelRoot, "Panel");
+
+        if (seatAnchor != null)
+        {
+            var seatLocalPosition = parentRoot.InverseTransformPoint(seatAnchor.position);
+            modelRoot.localPosition += DesiredSeatAnchorPosition - seatLocalPosition;
+        }
+        else if (panelAnchor != null)
+        {
+            var panelLocalPosition = parentRoot.InverseTransformPoint(panelAnchor.position);
+            modelRoot.localPosition += DesiredPanelAnchorPosition - panelLocalPosition;
+        }
+
+        if (panelAnchor != null)
+        {
+            var panelLocalPosition = parentRoot.InverseTransformPoint(panelAnchor.position);
+            modelRoot.localPosition += new Vector3(0f, 0f, DesiredPanelAnchorPosition.z - panelLocalPosition.z);
+        }
+    }
+
+    private static void AlignImportedModelForward(Transform parentRoot, Transform modelRoot)
+    {
+        var seatAnchor = FindChildByName(modelRoot, "Seat");
+        var panelAnchor = FindChildByName(modelRoot, "Panel");
+        if (seatAnchor == null || panelAnchor == null)
+        {
+            return;
+        }
+
+        var seatLocalPosition = parentRoot.InverseTransformPoint(seatAnchor.position);
+        var panelLocalPosition = parentRoot.InverseTransformPoint(panelAnchor.position);
+        var forwardVector = panelLocalPosition - seatLocalPosition;
+        forwardVector.y = 0f;
+        if (forwardVector.sqrMagnitude < 0.0001f)
+        {
+            return;
+        }
+
+        var signedAngle = Vector3.SignedAngle(forwardVector.normalized, Vector3.forward, Vector3.up);
+        modelRoot.localRotation = Quaternion.Euler(0f, signedAngle, 0f);
+    }
+
     private static void KeepOnlyCockpitAndGlass(Transform root)
     {
         var keptRendererCount = 0;
@@ -521,5 +599,18 @@ public class DroneViewModeController : MonoBehaviour
                 renderer.enabled = true;
             }
         }
+    }
+
+    private static Transform FindChildByName(Transform root, string exactName)
+    {
+        foreach (var child in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (child.name.Equals(exactName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return child;
+            }
+        }
+
+        return null;
     }
 }
