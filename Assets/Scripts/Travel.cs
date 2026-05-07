@@ -50,11 +50,14 @@ public class Travel : MonoBehaviour
 
         XRHand rightHand = handSubsystem.rightHand;
         XRHand leftHand = handSubsystem.leftHand;
+        bool viewSwitchGestureActive =
+            DroneViewModeController.IsTwoFingersUpGesture(leftHand) ||
+            DroneViewModeController.IsTwoFingersUpGesture(rightHand);
 
         if (rightHand.isTracked)
             HandleRightHandMovement(rightHand);
 
-        if (leftHand.isTracked)
+        if (leftHand.isTracked && !viewSwitchGestureActive)
             HandleLeftThumbRotation(leftHand);
     }
 

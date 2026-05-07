@@ -11,21 +11,21 @@ public class DroneViewModeController : MonoBehaviour
         Chase
     }
 
-    private const float GestureHoldDuration = 1f;
-    private const float GestureCooldownDuration = 1f;
+    private const float InitialGestureHoldDuration = 0.8f;
+    private const float HeldGestureCycleInterval = 0.9f;
     private const float ExtendedFingerThreshold = 0.1f;
     private const float CurledFingerThreshold = 0.09f;
     private const float FingerUpAlignmentThreshold = 0.6f;
     private static readonly Vector3 ChaseOffset = new Vector3(0f, 2.2f, -5.5f);
     private static readonly Vector3 CockpitLocalPosition = new Vector3(0f, 0f, 0f);
 
-    private readonly XRHandJointID[] extendedGestureJoints =
+    private static readonly XRHandJointID[] extendedGestureJoints =
     {
         XRHandJointID.IndexTip,
         XRHandJointID.MiddleTip
     };
 
-    private readonly XRHandJointID[] curledGestureJoints =
+    private static readonly XRHandJointID[] curledGestureJoints =
     {
         XRHandJointID.RingTip,
         XRHandJointID.LittleTip
@@ -41,7 +41,7 @@ public class DroneViewModeController : MonoBehaviour
     private Quaternion defaultCameraOffsetLocalRotation;
     private ViewMode currentMode;
     private float gestureHoldTime;
-    private float gestureCooldownUntil;
+    private bool hasTriggeredWhileHeld;
     private bool initialized;
 
     public string CurrentModeLabel => currentMode switch
@@ -52,7 +52,7 @@ public class DroneViewModeController : MonoBehaviour
         _ => "Unknown"
     };
 
-    public string GestureHint => "Hold one hand with index + middle fingers pointing up for 1s to switch views.";
+    public string GestureHint => "Hold one hand with index + middle fingers up to keep cycling views.";
 
     public void Initialize(Transform root, Camera cameraToUse)
     {
@@ -94,7 +94,7 @@ public class DroneViewModeController : MonoBehaviour
             }
         }
 
-        if (handSubsystem == null || Time.time < gestureCooldownUntil)
+        if (handSubsystem == null)
         {
             return;
         }
@@ -102,17 +102,22 @@ public class DroneViewModeController : MonoBehaviour
         if (!IsCycleGestureActive())
         {
             gestureHoldTime = 0f;
+            hasTriggeredWhileHeld = false;
             return;
         }
 
         gestureHoldTime += Time.deltaTime;
-        if (gestureHoldTime < GestureHoldDuration)
+        var requiredHoldTime = hasTriggeredWhileHeld
+            ? HeldGestureCycleInterval
+            : InitialGestureHoldDuration;
+
+        if (gestureHoldTime < requiredHoldTime)
         {
             return;
         }
 
         gestureHoldTime = 0f;
-        gestureCooldownUntil = Time.time + GestureCooldownDuration;
+        hasTriggeredWhileHeld = true;
         ApplyViewMode((ViewMode)(((int)currentMode + 1) % 3));
     }
 
@@ -134,7 +139,7 @@ public class DroneViewModeController : MonoBehaviour
         var leftHand = handSubsystem.leftHand;
         var rightHand = handSubsystem.rightHand;
 
-        return IsTwoFingersUp(leftHand) || IsTwoFingersUp(rightHand);
+        return IsTwoFingersUpGesture(leftHand) || IsTwoFingersUpGesture(rightHand);
     }
 
     private static bool TryGetPalmPose(XRHand hand, out Pose pose)
@@ -142,7 +147,7 @@ public class DroneViewModeController : MonoBehaviour
         return hand.GetJoint(XRHandJointID.Palm).TryGetPose(out pose);
     }
 
-    private bool IsTwoFingersUp(XRHand hand)
+    public static bool IsTwoFingersUpGesture(XRHand hand)
     {
         if (!hand.isTracked || !TryGetPalmPose(hand, out var palmPose))
         {
@@ -179,7 +184,7 @@ public class DroneViewModeController : MonoBehaviour
         return true;
     }
 
-    private bool IsFingerExtendedUp(XRHand hand, XRHandJointID jointId, Vector3 palmPosition)
+    private static bool IsFingerExtendedUp(XRHand hand, XRHandJointID jointId, Vector3 palmPosition)
     {
         if (!hand.GetJoint(jointId).TryGetPose(out var jointPose))
         {
