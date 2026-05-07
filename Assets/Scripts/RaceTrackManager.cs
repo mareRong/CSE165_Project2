@@ -23,6 +23,8 @@ public class RaceTrackManager : MonoBehaviour
     [SerializeField] private bool interpretTrackCoordinatesAsModelLocal = true;
     [SerializeField] private bool snapCheckpointHeightToSurface = false;
     [SerializeField] private string trackAnchorObjectName = DefaultTrackAnchorName;
+    [Header("Ghost Champion")]
+    public GhostChampion ghostChampion;
 
     private readonly List<RaceCheckpoint> checkpoints = new();
     private readonly List<Vector3> checkpointPositions = new();
@@ -156,6 +158,9 @@ public class RaceTrackManager : MonoBehaviour
         viewModeController.Initialize(racer, racerCamera);
         EnsureHud();
         EnsureDroneDistanceIndicator();
+        if (ghostChampion == null)
+            ghostChampion = FindObjectOfType<GhostChampion>();
+
         runtimePrepared = true;
     }
 
@@ -778,6 +783,11 @@ public class RaceTrackManager : MonoBehaviour
             raceStartTime = Time.time;
             stopwatchRunning = true;
             initialCountdownPending = false;
+            if (ghostChampion != null)
+            {
+                ghostChampion.StartRecording();
+                ghostChampion.StartGhostReplay();
+            }
         }
 
         statusMessage = $"Checkpoint {nextCheckpointIndex + 1} is live.";
@@ -921,6 +931,13 @@ public class RaceTrackManager : MonoBehaviour
         stopwatchRunning = false;
         travelController.canMove = false;
         finishTime = Time.time - raceStartTime;
+
+        if (ghostChampion != null)
+        {
+            ghostChampion.StopRecordingAndSaveIfBest(finishTime);
+            ghostChampion.StopGhostReplay();
+        }
+        
         bestTime = bestTime < 0f ? finishTime : Mathf.Min(bestTime, finishTime);
         statusMessage = "Finish line cleared.";
         raceAudio?.SetEngineActive(false);

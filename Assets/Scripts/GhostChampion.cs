@@ -110,6 +110,9 @@ public class GhostChampion : MonoBehaviour
             return;
 
         ghostDrone.gameObject.SetActive(true);
+        
+        ghostDrone.position = bestRun.frames[0].position;
+        ghostDrone.rotation = bestRun.frames[0].rotation;
 
         replayStartTime = Time.time;
         isReplaying = true;
