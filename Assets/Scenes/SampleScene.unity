@@ -132,7 +132,7 @@ GameObject:
   - component: {fileID: 192244893}
   - component: {fileID: 192244892}
   m_Layer: 0
-  m_Name: Cube
+  m_Name: GhostCube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1115,7 +1115,7 @@ MonoBehaviour:
   playerDrone: {fileID: 1085439597}
   ghostDrone: {fileID: 192244895}
   samplesPerSecond: 90
-  hideGhostWhenNotPlaying: 1
+  hideGhostWhenNotPlaying: 0
 --- !u!4 &1260313256
 Transform:
   m_ObjectHideFlags: 0

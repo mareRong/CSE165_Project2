@@ -28,7 +28,7 @@ public class GhostChampion : MonoBehaviour
     public float samplesPerSecond = 90f;
 
     [Header("Ghost Visual")]
-    public bool hideGhostWhenNotPlaying = true;
+    public bool hideGhostWhenNotPlaying = false;
 
     private GhostRunData currentRun = new GhostRunData();
     private GhostRunData bestRun;
@@ -53,6 +53,17 @@ public class GhostChampion : MonoBehaviour
 
     private void Start()
     {
+        Debug.Log("Ghost save path: " + SavePath);
+
+        if (File.Exists(SavePath))
+        {
+        Debug.Log("Ghost replay file FOUND.");
+        }
+        else
+        {
+            Debug.Log("Ghost replay file NOT found.");
+        }
+
         LoadBestRun();
 
         if (ghostDrone != null && hideGhostWhenNotPlaying)
@@ -110,7 +121,7 @@ public class GhostChampion : MonoBehaviour
             return;
 
         ghostDrone.gameObject.SetActive(true);
-        
+
         ghostDrone.position = bestRun.frames[0].position;
         ghostDrone.rotation = bestRun.frames[0].rotation;
 
