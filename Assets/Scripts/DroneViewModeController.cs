@@ -13,23 +13,13 @@ public class DroneViewModeController : MonoBehaviour
 
     private const float InitialGestureHoldDuration = 0.8f;
     private const float HeldGestureCycleInterval = 0.9f;
-    private const float ExtendedFingerThreshold = 0.1f;
-    private const float CurledFingerThreshold = 0.09f;
-    private const float FingerUpAlignmentThreshold = 0.6f;
+    private const float ExtendedFingerThreshold = 0.075f;
+    private const float CurledFingerThreshold = 0.11f;
+    private const float FingerRaisedHeightThreshold = 0.035f;
+    private const float LowerFingerHeightMargin = 0.015f;
+    private const float FingerSeparationThreshold = 0.02f;
     private static readonly Vector3 ChaseOffset = new Vector3(0f, 2.2f, -5.5f);
     private static readonly Vector3 CockpitLocalPosition = new Vector3(0f, 0f, 0f);
-
-    private static readonly XRHandJointID[] extendedGestureJoints =
-    {
-        XRHandJointID.IndexTip,
-        XRHandJointID.MiddleTip
-    };
-
-    private static readonly XRHandJointID[] curledGestureJoints =
-    {
-        XRHandJointID.RingTip,
-        XRHandJointID.LittleTip
-    };
 
     private Transform droneRoot;
     private Camera viewCamera;
@@ -154,34 +144,47 @@ public class DroneViewModeController : MonoBehaviour
             return false;
         }
 
-        var palmUp = Vector3.Dot(palmPose.rotation * Vector3.up, Vector3.up);
-        if (palmUp < 0.25f)
+        if (!TryGetJointPose(hand, XRHandJointID.IndexTip, out var indexTipPose) ||
+            !TryGetJointPose(hand, XRHandJointID.MiddleTip, out var middleTipPose) ||
+            !TryGetJointPose(hand, XRHandJointID.RingTip, out var ringTipPose) ||
+            !TryGetJointPose(hand, XRHandJointID.LittleTip, out var littleTipPose))
         {
             return false;
         }
 
-        foreach (var jointId in extendedGestureJoints)
+        var indexExtended = IsFingerExtendedUp(hand, XRHandJointID.IndexTip, palmPose.position);
+        var middleExtended = IsFingerExtendedUp(hand, XRHandJointID.MiddleTip, palmPose.position);
+        if (!indexExtended || !middleExtended)
         {
-            if (!IsFingerExtendedUp(hand, jointId, palmPose.position))
-            {
-                return false;
-            }
+            return false;
         }
 
-        foreach (var jointId in curledGestureJoints)
+        var indexHeight = indexTipPose.position.y - palmPose.position.y;
+        var middleHeight = middleTipPose.position.y - palmPose.position.y;
+        if (indexHeight < FingerRaisedHeightThreshold || middleHeight < FingerRaisedHeightThreshold)
         {
-            if (!hand.GetJoint(jointId).TryGetPose(out var jointPose))
-            {
-                return false;
-            }
-
-            if (Vector3.Distance(jointPose.position, palmPose.position) > CurledFingerThreshold)
-            {
-                return false;
-            }
+            return false;
         }
 
-        return true;
+        var indexMiddleSeparation = Vector3.Distance(indexTipPose.position, middleTipPose.position);
+        if (indexMiddleSeparation < FingerSeparationThreshold)
+        {
+            return false;
+        }
+
+        var ringDistance = Vector3.Distance(ringTipPose.position, palmPose.position);
+        var littleDistance = Vector3.Distance(littleTipPose.position, palmPose.position);
+        var ringLowerThanRaisedFingers =
+            ringTipPose.position.y < indexTipPose.position.y - LowerFingerHeightMargin &&
+            ringTipPose.position.y < middleTipPose.position.y - LowerFingerHeightMargin;
+        var littleLowerThanRaisedFingers =
+            littleTipPose.position.y < indexTipPose.position.y - LowerFingerHeightMargin &&
+            littleTipPose.position.y < middleTipPose.position.y - LowerFingerHeightMargin;
+
+        return ringDistance < CurledFingerThreshold &&
+               littleDistance < CurledFingerThreshold &&
+               ringLowerThanRaisedFingers &&
+               littleLowerThanRaisedFingers;
     }
 
     private static bool IsFingerExtendedUp(XRHand hand, XRHandJointID jointId, Vector3 palmPosition)
@@ -197,9 +200,12 @@ public class DroneViewModeController : MonoBehaviour
             return false;
         }
 
-        var fingerDirection = fingerVector.normalized;
-        return Vector3.Distance(jointPose.position, palmPosition) > ExtendedFingerThreshold &&
-               Vector3.Dot(fingerDirection, Vector3.up) > FingerUpAlignmentThreshold;
+        return Vector3.Distance(jointPose.position, palmPosition) > ExtendedFingerThreshold;
+    }
+
+    private static bool TryGetJointPose(XRHand hand, XRHandJointID jointId, out Pose pose)
+    {
+        return hand.GetJoint(jointId).TryGetPose(out pose);
     }
 
     private void EnsureVisuals()
