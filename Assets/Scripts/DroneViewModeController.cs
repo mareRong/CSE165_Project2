@@ -18,8 +18,12 @@ public class DroneViewModeController : MonoBehaviour
     private const float FingerRaisedHeightThreshold = 0.035f;
     private const float LowerFingerHeightMargin = 0.015f;
     private const float FingerSeparationThreshold = 0.02f;
+    private const string CockpitResourcePath = "drone_design";
     private static readonly Vector3 ChaseOffset = new Vector3(0f, 2.2f, -5.5f);
     private static readonly Vector3 CockpitLocalPosition = new Vector3(0f, 0f, 0f);
+    private static readonly Vector3 ImportedCockpitLocalPosition = new Vector3(0f, -0.55f, 0.8f);
+    private static readonly Vector3 ImportedCockpitLocalRotation = new Vector3(0f, 180f, 0f);
+    private static readonly Vector3 ImportedCockpitLocalScale = new Vector3(0.25f, 0.25f, 0.25f);
 
     private Transform droneRoot;
     private Camera viewCamera;
@@ -27,6 +31,7 @@ public class DroneViewModeController : MonoBehaviour
     private XRHandSubsystem handSubsystem;
     private GameObject cockpitVisual;
     private GameObject droneVisual;
+    private GameObject importedCockpitPrefab;
     private Vector3 defaultCameraOffsetLocalPosition;
     private Quaternion defaultCameraOffsetLocalRotation;
     private ViewMode currentMode;
@@ -242,6 +247,13 @@ public class DroneViewModeController : MonoBehaviour
 
     private GameObject CreateCockpitVisual()
     {
+        var importedCockpit = TryCreateImportedCockpitVisual();
+        if (importedCockpit != null)
+        {
+            importedCockpit.SetActive(false);
+            return importedCockpit;
+        }
+
         var cockpitRoot = new GameObject("Virtual Cockpit");
         cockpitRoot.transform.localPosition = CockpitLocalPosition;
         cockpitRoot.transform.localRotation = Quaternion.identity;
@@ -255,6 +267,31 @@ public class DroneViewModeController : MonoBehaviour
         CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cube, "Seat Base", new Vector3(0f, -0.24f, 0.02f), new Vector3(0.34f, 0.04f, 0.3f), new Color(0.1f, 0.1f, 0.1f));
 
         cockpitRoot.SetActive(false);
+        return cockpitRoot;
+    }
+
+    private GameObject TryCreateImportedCockpitVisual()
+    {
+        if (importedCockpitPrefab == null)
+        {
+            importedCockpitPrefab = Resources.Load<GameObject>(CockpitResourcePath);
+        }
+
+        if (importedCockpitPrefab == null)
+        {
+            return null;
+        }
+
+        var cockpitRoot = new GameObject("Virtual Cockpit");
+        cockpitRoot.transform.localPosition = CockpitLocalPosition;
+        cockpitRoot.transform.localRotation = Quaternion.identity;
+
+        var cockpitInstance = Object.Instantiate(importedCockpitPrefab, cockpitRoot.transform);
+        cockpitInstance.name = "Imported Drone Cockpit";
+        cockpitInstance.transform.localPosition = ImportedCockpitLocalPosition;
+        cockpitInstance.transform.localEulerAngles = ImportedCockpitLocalRotation;
+        cockpitInstance.transform.localScale = ImportedCockpitLocalScale;
+        StripColliders(cockpitRoot.transform);
         return cockpitRoot;
     }
 
@@ -406,6 +443,14 @@ public class DroneViewModeController : MonoBehaviour
 
         var collider = child.GetComponent<Collider>();
         if (collider != null)
+        {
+            Object.Destroy(collider);
+        }
+    }
+
+    private static void StripColliders(Transform root)
+    {
+        foreach (var collider in root.GetComponentsInChildren<Collider>(true))
         {
             Object.Destroy(collider);
         }
