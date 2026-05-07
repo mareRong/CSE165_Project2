@@ -5,7 +5,9 @@ public static class RaceTrackBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void EnsureRaceTrackExists()
     {
-        if (!Application.isPlaying || Object.FindObjectOfType<RaceTrackManager>() != null)
+        if (!Application.isPlaying ||
+            Object.FindObjectOfType<RaceTrackManager>() != null ||
+            Object.FindObjectOfType<Gameplay>() != null)
         {
             return;
         }

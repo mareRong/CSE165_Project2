@@ -41,6 +41,8 @@ public class Gameplay : MonoBehaviour
 
     private string currentMessage = "";
     private TMP_Text countdownText;
+    private DroneRaceAudio raceAudio;
+    private DroneViewModeController viewModeController;
 
     private void Start()
     {
@@ -60,6 +62,23 @@ public class Gameplay : MonoBehaviour
         {
             travelScript.canMove = false;
             travelScript.TriggerEntered += HandleDroneTriggerEntered;
+        }
+
+        raceAudio = drone.GetComponent<DroneRaceAudio>();
+        if (raceAudio == null)
+            raceAudio = drone.gameObject.AddComponent<DroneRaceAudio>();
+
+        raceAudio.Initialize(drone);
+        raceAudio.SetEngineActive(false);
+
+        Camera mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            viewModeController = drone.GetComponent<DroneViewModeController>();
+            if (viewModeController == null)
+                viewModeController = drone.gameObject.AddComponent<DroneViewModeController>();
+
+            viewModeController.Initialize(drone, mainCamera);
         }
 
         if (hideDroneVisual && droneVisualRoot != null)
@@ -133,6 +152,7 @@ public class Gameplay : MonoBehaviour
         currentCheckpointIndex = 1;
 
         MoveDroneToCheckpoint(0);
+        UpdateCheckpointStates();
     }
 
     private IEnumerator StartCountdown()
@@ -145,12 +165,16 @@ public class Gameplay : MonoBehaviour
         while (count > 0)
         {
             SetCountdownOverlay(Mathf.CeilToInt(count).ToString(), new Color(1f, 0.95f, 0.7f));
+            if (raceAudio != null)
+                raceAudio.PlayCountdownTick(Mathf.CeilToInt(count));
 
             yield return new WaitForSeconds(1f);
             count--;
         }
 
         SetCountdownOverlay("GO!", new Color(0.55f, 1f, 0.65f));
+        if (raceAudio != null)
+            raceAudio.PlayCountdownGo();
 
         yield return new WaitForSeconds(1f);
 
@@ -160,6 +184,9 @@ public class Gameplay : MonoBehaviour
 
         if (travelScript != null)
             travelScript.canMove = true;
+
+        if (raceAudio != null)
+            raceAudio.SetEngineActive(true);
     }
 
     private void CheckCheckpointProgress()
@@ -176,18 +203,7 @@ public class Gameplay : MonoBehaviour
 
         if (distance <= checkpointReachRadius)
         {
-            lastClearedCheckpointIndex = currentCheckpointIndex;
-            currentCheckpointIndex++;
-
-            if (currentCheckpointIndex >= checkpoints.Count)
-            {
-                FinishRace();
-                return;
-            }
-
-            currentMessage = "Checkpoint reached!";
-
-            StartCoroutine(ClearMessageAfterDelay(1f));
+            CompleteCheckpoint(currentCheckpointIndex);
         }
     }
 
@@ -197,8 +213,12 @@ public class Gameplay : MonoBehaviour
             return;
 
         // Ignore checkpoints
-        if (other.GetComponent<RaceCheckpoint>() != null)
+        RaceCheckpoint checkpoint = other.GetComponent<RaceCheckpoint>();
+        if (checkpoint != null)
+        {
+            CompleteCheckpoint(checkpoint.CheckpointIndex);
             return;
+        }
 
         // Ignore self collision
         if (other.transform.root == drone.root)
@@ -250,6 +270,9 @@ public class Gameplay : MonoBehaviour
         if (travelScript != null)
             travelScript.canMove = true;
 
+        if (raceAudio != null)
+            raceAudio.SetEngineActive(true);
+
         isInCrashPenalty = false;
     }
 
@@ -288,6 +311,12 @@ public class Gameplay : MonoBehaviour
         if (travelScript != null)
             travelScript.canMove = false;
 
+        if (raceAudio != null)
+        {
+            raceAudio.SetEngineActive(false);
+            raceAudio.PlayFinish();
+        }
+
         currentMessage = "Finished!";
     }
 
@@ -311,6 +340,12 @@ public class Gameplay : MonoBehaviour
 
         string checkpointString;
         string distanceString;
+        string viewModeString = viewModeController != null
+            ? "View: " + viewModeController.CurrentModeLabel
+            : "View: --";
+        string audioString = raceAudio != null
+            ? "Audio: " + raceAudio.DebugStatus
+            : "Audio: --";
 
         if (raceFinished)
         {
@@ -336,11 +371,57 @@ public class Gameplay : MonoBehaviour
         gameplayText.text =
             timerString +
             "\n" +
+            viewModeString +
+            "\n" +
             checkpointString +
             "\n" +
             distanceString +
             "\n" +
+            audioString +
+            "\n" +
             currentMessage;
+    }
+
+    private void CompleteCheckpoint(int checkpointIndex)
+    {
+        if (!raceReady || raceFinished || isInCrashPenalty)
+            return;
+
+        if (checkpointIndex != currentCheckpointIndex)
+            return;
+
+        lastClearedCheckpointIndex = currentCheckpointIndex;
+        currentCheckpointIndex++;
+        UpdateCheckpointStates();
+
+        if (raceAudio != null)
+            raceAudio.PlayCheckpoint();
+
+        if (currentCheckpointIndex >= checkpoints.Count)
+        {
+            FinishRace();
+            return;
+        }
+
+        currentMessage = "Checkpoint reached!";
+        StartCoroutine(ClearMessageAfterDelay(1f));
+    }
+
+    private void UpdateCheckpointStates()
+    {
+        for (int i = 0; i < checkpoints.Count; i++)
+        {
+            RaceCheckpoint checkpoint = checkpoints[i] != null ? checkpoints[i].GetComponent<RaceCheckpoint>() : null;
+            if (checkpoint == null)
+                continue;
+
+            if (i <= lastClearedCheckpointIndex)
+                checkpoint.SetState(CheckpointVisualState.Completed);
+            else if (i == currentCheckpointIndex)
+                checkpoint.SetState(CheckpointVisualState.Active);
+            else
+                checkpoint.SetState(CheckpointVisualState.Pending);
+        }
     }
 
     private void ConfigureGameplayHud()
