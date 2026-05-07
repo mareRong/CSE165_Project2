@@ -860,6 +860,9 @@ public class RaceTrackManager : MonoBehaviour
         var gestureLine = viewModeController != null
             ? viewModeController.GestureHint
             : "Hand gesture: --";
+        var audioLine = raceAudio != null
+            ? $"Audio: {raceAudio.DebugStatus}"
+            : "Audio: --";
 
         var bestTimeLine = bestTime > 0f
             ? $"Best time: {bestTime:0.00}s"
@@ -887,6 +890,7 @@ public class RaceTrackManager : MonoBehaviour
             $"{distanceLine}\n" +
             $"{countdownLine}\n" +
             $"{gestureLine}\n" +
+            $"{audioLine}\n" +
             $"{statusMessage}";
         hudText.ForceMeshUpdate();
     }

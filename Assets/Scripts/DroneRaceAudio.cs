@@ -30,6 +30,12 @@ public class DroneRaceAudio : MonoBehaviour
     private AudioClip finishClip;
     private bool playedInitializationCue;
 
+    public string DebugStatus =>
+        $"host:{(audioHost != null ? audioHost.name : "none")} " +
+        $"engineSrc:{(engineSource != null)} playing:{(engineSource != null && engineSource.isPlaying)} " +
+        $"engineVol:{(engineSource != null ? engineSource.volume.ToString("0.00") : "--")} " +
+        $"sfxSrc:{(sfxSource != null)} sfxPlaying:{(sfxSource != null && sfxSource.isPlaying)}";
+
     public void Initialize(Transform targetTransform)
     {
         target = targetTransform;
@@ -127,7 +133,27 @@ public class DroneRaceAudio : MonoBehaviour
 
     private void EnsureAudioSources()
     {
-        var preferredHost = Camera.main != null ? Camera.main.gameObject : gameObject;
+        var preferredParent = Camera.main != null ? Camera.main.transform : transform;
+        var preferredHostName = "Race Audio Host";
+        GameObject preferredHost = null;
+
+        foreach (Transform child in preferredParent)
+        {
+            if (child.name == preferredHostName)
+            {
+                preferredHost = child.gameObject;
+                break;
+            }
+        }
+
+        if (preferredHost == null)
+        {
+            preferredHost = new GameObject(preferredHostName);
+            preferredHost.transform.SetParent(preferredParent, false);
+            preferredHost.transform.localPosition = Vector3.zero;
+            preferredHost.transform.localRotation = Quaternion.identity;
+        }
+
         if (audioHost != preferredHost)
         {
             audioHost = preferredHost;
@@ -137,11 +163,20 @@ public class DroneRaceAudio : MonoBehaviour
 
         if (engineSource == null)
         {
-            engineSource = audioHost.GetComponent<AudioSource>();
+            foreach (var source in audioHost.GetComponents<AudioSource>())
+            {
+                if (source != null && source.loop)
+                {
+                    engineSource = source;
+                    break;
+                }
+            }
+
             if (engineSource == null)
             {
                 engineSource = audioHost.AddComponent<AudioSource>();
             }
+
             engineSource.playOnAwake = false;
             engineSource.loop = true;
             engineSource.spatialBlend = 0f;
@@ -318,7 +353,9 @@ public class DroneRaceAudio : MonoBehaviour
         sfxSource.enabled = true;
         sfxSource.mute = false;
         sfxSource.UnPause();
-        sfxSource.PlayOneShot(clip, volumeScale);
+        sfxSource.clip = clip;
+        sfxSource.volume = volumeScale;
+        sfxSource.Play();
     }
 
     private static void EnsureAudioListenerState()
