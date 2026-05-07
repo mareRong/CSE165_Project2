@@ -13,15 +13,20 @@ public class DroneViewModeController : MonoBehaviour
 
     private const float GestureHoldDuration = 1f;
     private const float GestureCooldownDuration = 1f;
-    private const float OpenHandThreshold = 0.12f;
+    private const float ExtendedFingerThreshold = 0.1f;
+    private const float CurledFingerThreshold = 0.09f;
+    private const float FingerUpAlignmentThreshold = 0.6f;
     private static readonly Vector3 ChaseOffset = new Vector3(0f, 2.2f, -5.5f);
     private static readonly Vector3 CockpitLocalPosition = new Vector3(0f, 0f, 0f);
 
-    private readonly XRHandJointID[] openHandJoints =
+    private readonly XRHandJointID[] extendedGestureJoints =
     {
-        XRHandJointID.ThumbTip,
         XRHandJointID.IndexTip,
-        XRHandJointID.MiddleTip,
+        XRHandJointID.MiddleTip
+    };
+
+    private readonly XRHandJointID[] curledGestureJoints =
+    {
         XRHandJointID.RingTip,
         XRHandJointID.LittleTip
     };
@@ -47,7 +52,7 @@ public class DroneViewModeController : MonoBehaviour
         _ => "Unknown"
     };
 
-    public string GestureHint => "Hold both open palms up for 1s to switch views.";
+    public string GestureHint => "Hold one hand with index + middle fingers pointing up for 1s to switch views.";
 
     public void Initialize(Transform root, Camera cameraToUse)
     {
@@ -128,25 +133,8 @@ public class DroneViewModeController : MonoBehaviour
     {
         var leftHand = handSubsystem.leftHand;
         var rightHand = handSubsystem.rightHand;
-        if (!leftHand.isTracked || !rightHand.isTracked)
-        {
-            return false;
-        }
 
-        if (!TryGetPalmPose(leftHand, out var leftPalmPose) || !TryGetPalmPose(rightHand, out var rightPalmPose))
-        {
-            return false;
-        }
-
-        var leftPalmUp = Vector3.Dot(leftPalmPose.rotation * Vector3.up, Vector3.up);
-        var rightPalmUp = Vector3.Dot(rightPalmPose.rotation * Vector3.up, Vector3.up);
-        var handsSeparated = Vector3.Distance(leftPalmPose.position, rightPalmPose.position) > 0.18f;
-
-        return leftPalmUp > 0.75f &&
-               rightPalmUp > 0.75f &&
-               handsSeparated &&
-               IsOpenHand(leftHand, leftPalmPose.position) &&
-               IsOpenHand(rightHand, rightPalmPose.position);
+        return IsTwoFingersUp(leftHand) || IsTwoFingersUp(rightHand);
     }
 
     private static bool TryGetPalmPose(XRHand hand, out Pose pose)
@@ -154,26 +142,59 @@ public class DroneViewModeController : MonoBehaviour
         return hand.GetJoint(XRHandJointID.Palm).TryGetPose(out pose);
     }
 
-    private bool IsOpenHand(XRHand hand, Vector3 palmPosition)
+    private bool IsTwoFingersUp(XRHand hand)
     {
-        var totalDistance = 0f;
-        var count = 0;
-
-        foreach (var jointId in openHandJoints)
-        {
-            if (hand.GetJoint(jointId).TryGetPose(out var jointPose))
-            {
-                totalDistance += Vector3.Distance(jointPose.position, palmPosition);
-                count++;
-            }
-        }
-
-        if (count == 0)
+        if (!hand.isTracked || !TryGetPalmPose(hand, out var palmPose))
         {
             return false;
         }
 
-        return (totalDistance / count) > OpenHandThreshold;
+        var palmUp = Vector3.Dot(palmPose.rotation * Vector3.up, Vector3.up);
+        if (palmUp < 0.25f)
+        {
+            return false;
+        }
+
+        foreach (var jointId in extendedGestureJoints)
+        {
+            if (!IsFingerExtendedUp(hand, jointId, palmPose.position))
+            {
+                return false;
+            }
+        }
+
+        foreach (var jointId in curledGestureJoints)
+        {
+            if (!hand.GetJoint(jointId).TryGetPose(out var jointPose))
+            {
+                return false;
+            }
+
+            if (Vector3.Distance(jointPose.position, palmPose.position) > CurledFingerThreshold)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool IsFingerExtendedUp(XRHand hand, XRHandJointID jointId, Vector3 palmPosition)
+    {
+        if (!hand.GetJoint(jointId).TryGetPose(out var jointPose))
+        {
+            return false;
+        }
+
+        var fingerVector = jointPose.position - palmPosition;
+        if (fingerVector.sqrMagnitude < 0.0001f)
+        {
+            return false;
+        }
+
+        var fingerDirection = fingerVector.normalized;
+        return Vector3.Distance(jointPose.position, palmPosition) > ExtendedFingerThreshold &&
+               Vector3.Dot(fingerDirection, Vector3.up) > FingerUpAlignmentThreshold;
     }
 
     private void EnsureVisuals()
