@@ -27,16 +27,25 @@ public class DroneRaceAudio : MonoBehaviour
     private AudioClip checkpointClip;
     private AudioClip crashClip;
     private AudioClip finishClip;
+    private bool playedInitializationCue;
 
     public void Initialize(Transform targetTransform)
     {
         target = targetTransform;
         lastPosition = target != null ? target.position : transform.position;
+        EnsureAudioListenerState();
         EnsureAudioSources();
         EnsureClips();
         if (engineSource != null && !engineSource.isPlaying)
         {
+            engineSource.Stop();
             engineSource.Play();
+        }
+
+        if (!playedInitializationCue)
+        {
+            playedInitializationCue = true;
+            PlayClip(CreateDualToneClip("Audio Ready", 0.2f, 660f, 880f, 0.18f), 0.9f);
         }
     }
 
@@ -56,28 +65,28 @@ public class DroneRaceAudio : MonoBehaviour
             waveSharpness: 0.06f,
             vibratoAmount: 0.002f,
             vibratoFrequency: 6f);
-        sfxSource.PlayOneShot(clip, 0.9f);
+        PlayClip(clip, 0.9f);
     }
 
     public void PlayCountdownGo()
     {
         var clip = CreateDualToneClip("Countdown Go", 0.34f, 740f, 1100f, 0.16f);
-        sfxSource.PlayOneShot(clip, 1f);
+        PlayClip(clip, 1f);
     }
 
     public void PlayCheckpoint()
     {
-        sfxSource.PlayOneShot(checkpointClip, 0.95f);
+        PlayClip(checkpointClip, 0.95f);
     }
 
     public void PlayCrash()
     {
-        sfxSource.PlayOneShot(crashClip, 1f);
+        PlayClip(crashClip, 1f);
     }
 
     public void PlayFinish()
     {
-        sfxSource.PlayOneShot(finishClip, 1f);
+        PlayClip(finishClip, 1f);
     }
 
     private void Awake()
@@ -94,6 +103,8 @@ public class DroneRaceAudio : MonoBehaviour
             return;
         }
 
+        EnsureAudioListenerState();
+
         var deltaTime = Mathf.Max(Time.deltaTime, 0.0001f);
         var measuredSpeed = Vector3.Distance(target.position, lastPosition) / deltaTime;
         lastPosition = target.position;
@@ -103,6 +114,11 @@ public class DroneRaceAudio : MonoBehaviour
         var normalizedSpeed = Mathf.InverseLerp(minAudibleSpeed, maxExpectedSpeed, smoothedSpeed);
         var targetVolume = engineActive ? engineBaseVolume + (normalizedSpeed * engineVolumeRange) : 0f;
         var targetPitch = engineBasePitch + (normalizedSpeed * enginePitchRange);
+
+        if (engineActive && engineSource.clip != null && !engineSource.isPlaying)
+        {
+            engineSource.Play();
+        }
 
         engineSource.volume = Mathf.Lerp(engineSource.volume, targetVolume, 1f - Mathf.Exp(-8f * deltaTime));
         engineSource.pitch = Mathf.Lerp(engineSource.pitch, targetPitch, 1f - Mathf.Exp(-10f * deltaTime));
@@ -118,8 +134,14 @@ public class DroneRaceAudio : MonoBehaviour
             engineSource.spatialBlend = 0f;
             engineSource.volume = 0f;
             engineSource.pitch = engineBasePitch;
+            engineSource.priority = 0;
+            engineSource.mute = false;
+            engineSource.bypassEffects = true;
             engineSource.ignoreListenerPause = true;
             engineSource.bypassListenerEffects = true;
+            engineSource.bypassReverbZones = true;
+            engineSource.reverbZoneMix = 0f;
+            engineSource.dopplerLevel = 0f;
         }
 
         if (sfxSource == null)
@@ -129,8 +151,14 @@ public class DroneRaceAudio : MonoBehaviour
             sfxSource.loop = false;
             sfxSource.spatialBlend = 0f;
             sfxSource.volume = 1f;
+            sfxSource.priority = 0;
+            sfxSource.mute = false;
+            sfxSource.bypassEffects = true;
             sfxSource.ignoreListenerPause = true;
             sfxSource.bypassListenerEffects = true;
+            sfxSource.bypassReverbZones = true;
+            sfxSource.reverbZoneMix = 0f;
+            sfxSource.dopplerLevel = 0f;
         }
     }
 
@@ -250,5 +278,26 @@ public class DroneRaceAudio : MonoBehaviour
         var clip = AudioClip.Create(clipName, samples.Length, 1, SampleRate, false);
         clip.SetData(samples, 0);
         return clip;
+    }
+
+    private void PlayClip(AudioClip clip, float volumeScale)
+    {
+        if (clip == null)
+        {
+            return;
+        }
+
+        EnsureAudioListenerState();
+        EnsureAudioSources();
+        sfxSource.enabled = true;
+        sfxSource.mute = false;
+        sfxSource.UnPause();
+        sfxSource.PlayOneShot(clip, volumeScale);
+    }
+
+    private static void EnsureAudioListenerState()
+    {
+        AudioListener.pause = false;
+        AudioListener.volume = 1f;
     }
 }
