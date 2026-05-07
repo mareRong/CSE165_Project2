@@ -21,9 +21,9 @@ public class DroneViewModeController : MonoBehaviour
     private const string CockpitResourcePath = "Schweizer SGS 2-33A";
     private static readonly Vector3 ChaseOffset = new Vector3(0f, 2.2f, -5.5f);
     private static readonly Vector3 CockpitLocalPosition = new Vector3(0f, 0f, 0f);
-    private static readonly Vector3 ImportedCockpitLocalPosition = new Vector3(0f, -0.45f, 1.05f);
-    private static readonly Vector3 ImportedCockpitLocalRotation = new Vector3(0f, 180f, 0f);
-    private static readonly Vector3 ImportedCockpitLocalScale = new Vector3(0.13f, 0.13f, 0.13f);
+    private static readonly Vector3 ImportedCockpitLocalPosition = new Vector3(0f, -0.2f, 0.15f);
+    private static readonly Vector3 ImportedCockpitLocalRotation = new Vector3(0f, 0f, 0f);
+    private static readonly Vector3 ImportedCockpitLocalScale = new Vector3(0.16f, 0.16f, 0.16f);
 
     private Transform droneRoot;
     private Camera viewCamera;
