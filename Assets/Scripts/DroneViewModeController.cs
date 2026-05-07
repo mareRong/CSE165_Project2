@@ -459,6 +459,8 @@ public class DroneViewModeController : MonoBehaviour
 
     private static void KeepOnlyCockpitAndGlass(Transform root)
     {
+        var keptRendererCount = 0;
+
         foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
         {
             if (renderer == null)
@@ -466,7 +468,24 @@ public class DroneViewModeController : MonoBehaviour
                 continue;
             }
 
-            var keepRenderer = false;
+            var objectName = renderer.transform.name.ToLowerInvariant();
+            var keepRenderer =
+                objectName.Contains("canopy") ||
+                objectName.Contains("window") ||
+                objectName.Contains("panel") ||
+                objectName.Contains("seat") ||
+                objectName.Contains("floor") ||
+                objectName.Contains("wall") ||
+                objectName.Contains("joystick") ||
+                objectName.Contains("rudder") ||
+                objectName.Contains("compass") ||
+                objectName.Contains("radio") ||
+                objectName.Contains("asi") ||
+                objectName.Contains("vsi") ||
+                objectName.Contains("altimiter") ||
+                objectName.Contains("winch") ||
+                objectName.Contains("door");
+
             foreach (var material in renderer.sharedMaterials)
             {
                 if (material == null)
@@ -483,6 +502,24 @@ public class DroneViewModeController : MonoBehaviour
             }
 
             renderer.enabled = keepRenderer;
+            if (keepRenderer)
+            {
+                keptRendererCount++;
+            }
+        }
+
+        if (keptRendererCount > 0)
+        {
+            return;
+        }
+
+        // Fallback: if name/material matching fails, keep everything visible rather than hiding the whole cockpit.
+        foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
+        {
+            if (renderer != null)
+            {
+                renderer.enabled = true;
+            }
         }
     }
 }
