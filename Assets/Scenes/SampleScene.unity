@@ -1113,7 +1113,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GhostChampion
   playerDrone: {fileID: 1085439597}
-  ghostDrone: {fileID: 0}
+  ghostDrone: {fileID: 192244895}
   samplesPerSecond: 90
   hideGhostWhenNotPlaying: 1
 --- !u!4 &1260313256
