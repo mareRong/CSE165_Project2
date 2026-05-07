@@ -806,19 +806,7 @@ public class RaceTrackManager : MonoBehaviour
             return;
         }
 
-        checkpoints[nextCheckpointIndex].SetState(CheckpointVisualState.Completed);
-        lastClearedCheckpointIndex = nextCheckpointIndex;
-        nextCheckpointIndex++;
-
-        if (nextCheckpointIndex >= checkpointPositions.Count)
-        {
-            FinishRace();
-            return;
-        }
-
-        checkpoints[nextCheckpointIndex].SetState(CheckpointVisualState.Active);
-        statusMessage = $"Checkpoint {lastClearedCheckpointIndex + 1} cleared.";
-        raceAudio?.PlayCheckpoint();
+        CompleteCheckpoint(nextCheckpointIndex);
     }
 
     private void UpdateCourseWarning()
@@ -953,6 +941,11 @@ public class RaceTrackManager : MonoBehaviour
 
         if (IsCheckpoint(other))
         {
+            var checkpoint = other.GetComponent<RaceCheckpoint>();
+            if (checkpoint != null && checkpoint.BelongsTo(this))
+            {
+                CompleteCheckpoint(checkpoint.CheckpointIndex);
+            }
             return;
         }
 
@@ -995,6 +988,28 @@ public class RaceTrackManager : MonoBehaviour
             attachedBody.linearVelocity = Vector3.zero;
             attachedBody.angularVelocity = Vector3.zero;
         }
+    }
+
+    private void CompleteCheckpoint(int checkpointIndex)
+    {
+        if (countdownActive || raceFinished || checkpointIndex != nextCheckpointIndex || checkpointIndex < 0 || checkpointIndex >= checkpoints.Count)
+        {
+            return;
+        }
+
+        checkpoints[checkpointIndex].SetState(CheckpointVisualState.Completed);
+        lastClearedCheckpointIndex = checkpointIndex;
+        nextCheckpointIndex++;
+
+        if (nextCheckpointIndex >= checkpointPositions.Count)
+        {
+            FinishRace();
+            return;
+        }
+
+        checkpoints[nextCheckpointIndex].SetState(CheckpointVisualState.Active);
+        statusMessage = $"Checkpoint {lastClearedCheckpointIndex + 1} cleared.";
+        raceAudio?.PlayCheckpoint();
     }
 
     private void ClearTrackObjects()
