@@ -53,6 +53,7 @@ public class GhostChampion : MonoBehaviour
 
     private void Start()
     {
+        Debug.Log("GhostChampion Start running");
         Debug.Log("Ghost save path: " + SavePath);
 
         if (File.Exists(SavePath))
