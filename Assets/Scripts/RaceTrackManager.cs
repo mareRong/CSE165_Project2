@@ -46,6 +46,7 @@ public class RaceTrackManager : MonoBehaviour
     private bool raceFinished;
     private bool countdownActive;
     private bool loadedPreferredTrack;
+    private bool externalGameplayController;
     private int nextCheckpointIndex;
     private int lastClearedCheckpointIndex;
     private float countdownEndTime;
@@ -58,11 +59,22 @@ public class RaceTrackManager : MonoBehaviour
 
     private void Start()
     {
+        externalGameplayController = FindObjectOfType<Gameplay>() != null;
         TryInitialize();
     }
 
     private void Update()
     {
+        if (externalGameplayController)
+        {
+            if (checkpointPositions.Count == 0)
+            {
+                TryInitialize();
+            }
+
+            return;
+        }
+
         if (racer == null || racerCamera == null)
         {
             TryInitialize();
@@ -97,6 +109,16 @@ public class RaceTrackManager : MonoBehaviour
 
     private void TryInitialize()
     {
+        if (externalGameplayController)
+        {
+            if (checkpointPositions.Count == 0)
+            {
+                LoadOrBuildTrack();
+            }
+
+            return;
+        }
+
         racerCamera = Camera.main;
         if (racerCamera == null)
         {
