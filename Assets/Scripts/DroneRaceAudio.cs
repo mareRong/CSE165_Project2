@@ -20,6 +20,7 @@ public class DroneRaceAudio : MonoBehaviour
 
     private AudioSource engineSource;
     private AudioSource sfxSource;
+    private GameObject audioHost;
     private Vector3 lastPosition;
     private float smoothedSpeed;
     private bool engineActive;
@@ -126,9 +127,21 @@ public class DroneRaceAudio : MonoBehaviour
 
     private void EnsureAudioSources()
     {
+        var preferredHost = Camera.main != null ? Camera.main.gameObject : gameObject;
+        if (audioHost != preferredHost)
+        {
+            audioHost = preferredHost;
+            engineSource = null;
+            sfxSource = null;
+        }
+
         if (engineSource == null)
         {
-            engineSource = gameObject.AddComponent<AudioSource>();
+            engineSource = audioHost.GetComponent<AudioSource>();
+            if (engineSource == null)
+            {
+                engineSource = audioHost.AddComponent<AudioSource>();
+            }
             engineSource.playOnAwake = false;
             engineSource.loop = true;
             engineSource.spatialBlend = 0f;
@@ -146,7 +159,20 @@ public class DroneRaceAudio : MonoBehaviour
 
         if (sfxSource == null)
         {
-            sfxSource = gameObject.AddComponent<AudioSource>();
+            var sources = audioHost.GetComponents<AudioSource>();
+            foreach (var source in sources)
+            {
+                if (source != null && source != engineSource)
+                {
+                    sfxSource = source;
+                    break;
+                }
+            }
+
+            if (sfxSource == null)
+            {
+                sfxSource = audioHost.AddComponent<AudioSource>();
+            }
             sfxSource.playOnAwake = false;
             sfxSource.loop = false;
             sfxSource.spatialBlend = 0f;
