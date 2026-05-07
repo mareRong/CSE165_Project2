@@ -18,12 +18,12 @@ public class DroneViewModeController : MonoBehaviour
     private const float FingerRaisedHeightThreshold = 0.035f;
     private const float LowerFingerHeightMargin = 0.015f;
     private const float FingerSeparationThreshold = 0.02f;
-    private const string CockpitResourcePath = "drone_design";
+    private const string CockpitResourcePath = "Schweizer SGS 2-33A";
     private static readonly Vector3 ChaseOffset = new Vector3(0f, 2.2f, -5.5f);
     private static readonly Vector3 CockpitLocalPosition = new Vector3(0f, 0f, 0f);
-    private static readonly Vector3 ImportedCockpitLocalPosition = new Vector3(0f, -0.55f, 0.8f);
+    private static readonly Vector3 ImportedCockpitLocalPosition = new Vector3(0f, -0.45f, 1.05f);
     private static readonly Vector3 ImportedCockpitLocalRotation = new Vector3(0f, 180f, 0f);
-    private static readonly Vector3 ImportedCockpitLocalScale = new Vector3(0.25f, 0.25f, 0.25f);
+    private static readonly Vector3 ImportedCockpitLocalScale = new Vector3(0.13f, 0.13f, 0.13f);
 
     private Transform droneRoot;
     private Camera viewCamera;
@@ -291,6 +291,7 @@ public class DroneViewModeController : MonoBehaviour
         cockpitInstance.transform.localPosition = ImportedCockpitLocalPosition;
         cockpitInstance.transform.localEulerAngles = ImportedCockpitLocalRotation;
         cockpitInstance.transform.localScale = ImportedCockpitLocalScale;
+        KeepOnlyCockpitAndGlass(cockpitRoot.transform);
         StripColliders(cockpitRoot.transform);
         return cockpitRoot;
     }
@@ -453,6 +454,35 @@ public class DroneViewModeController : MonoBehaviour
         foreach (var collider in root.GetComponentsInChildren<Collider>(true))
         {
             Object.Destroy(collider);
+        }
+    }
+
+    private static void KeepOnlyCockpitAndGlass(Transform root)
+    {
+        foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
+        {
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            var keepRenderer = false;
+            foreach (var material in renderer.sharedMaterials)
+            {
+                if (material == null)
+                {
+                    continue;
+                }
+
+                var materialName = material.name.ToLowerInvariant();
+                if (materialName.Contains("cockpit") || materialName.Contains("glass"))
+                {
+                    keepRenderer = true;
+                    break;
+                }
+            }
+
+            renderer.enabled = keepRenderer;
         }
     }
 }

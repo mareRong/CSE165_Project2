@@ -1,0 +1,32 @@
+# Blender 4.5.0 MTL File: 'Schweizer SGS 2-33A.blend'
+# www.blender.org
+
+newmtl Exterior
+Ns 250.000000
+Ka 0.476923 0.476923 0.476923
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 3
+map_Kd A:/TurboSquid/Schwiezer 2-33A/Upload Copy/Blender File/Exterior_Texture.png
+
+newmtl Glass
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd A:/TurboSquid/Schwiezer 2-33A/Upload Copy/Blender File/Glass.png
+map_d A:/TurboSquid/Schwiezer 2-33A/Upload Copy/Blender File/Glass.png
+
+newmtl cockpitTexture
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd A:/TurboSquid/Schwiezer 2-33A/Upload Copy/Blender File/CockpitTexture.png
