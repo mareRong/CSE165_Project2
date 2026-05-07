@@ -15,6 +15,7 @@ public class DroneViewModeController : MonoBehaviour
     private const float GestureCooldownDuration = 1f;
     private const float OpenHandThreshold = 0.12f;
     private static readonly Vector3 ChaseOffset = new Vector3(0f, 2.2f, -5.5f);
+    private static readonly Vector3 CockpitLocalPosition = new Vector3(0f, 0f, 0f);
 
     private readonly XRHandJointID[] openHandJoints =
     {
@@ -32,14 +33,25 @@ public class DroneViewModeController : MonoBehaviour
     private GameObject cockpitVisual;
     private GameObject droneVisual;
     private Vector3 defaultCameraOffsetLocalPosition;
+    private Quaternion defaultCameraOffsetLocalRotation;
     private ViewMode currentMode;
     private float gestureHoldTime;
     private float gestureCooldownUntil;
     private bool initialized;
 
+    public string CurrentModeLabel => currentMode switch
+    {
+        ViewMode.Pilot => "Pilot",
+        ViewMode.Cockpit => "Cockpit",
+        ViewMode.Chase => "Chase",
+        _ => "Unknown"
+    };
+
+    public string GestureHint => "Hold both open palms up for 1s to switch views.";
+
     public void Initialize(Transform root, Camera cameraToUse)
     {
-        if (initialized)
+        if (root == null || cameraToUse == null)
         {
             return;
         }
@@ -48,10 +60,17 @@ public class DroneViewModeController : MonoBehaviour
         viewCamera = cameraToUse;
         cameraOffset = viewCamera.transform.parent;
         defaultCameraOffsetLocalPosition = cameraOffset != null ? cameraOffset.localPosition : Vector3.zero;
+        defaultCameraOffsetLocalRotation = cameraOffset != null ? cameraOffset.localRotation : Quaternion.identity;
 
         EnsureVisuals();
-        ApplyViewMode(ViewMode.Pilot);
-        initialized = true;
+
+        if (!initialized)
+        {
+            currentMode = ViewMode.Pilot;
+            initialized = true;
+        }
+
+        ApplyViewMode(currentMode);
     }
 
     private void Update()
@@ -159,20 +178,49 @@ public class DroneViewModeController : MonoBehaviour
 
     private void EnsureVisuals()
     {
-        cockpitVisual = CreateCockpitVisual();
-        droneVisual = CreateDroneVisual();
+        if (cockpitVisual == null)
+        {
+            cockpitVisual = CreateCockpitVisual();
+        }
+
+        if (droneVisual == null)
+        {
+            droneVisual = CreateDroneVisual();
+        }
+
+        ReparentVisualsIfNeeded();
+    }
+
+    private void ReparentVisualsIfNeeded()
+    {
+        if (cockpitVisual != null && cameraOffset != null && cockpitVisual.transform.parent != cameraOffset)
+        {
+            cockpitVisual.transform.SetParent(cameraOffset, false);
+            cockpitVisual.transform.localPosition = CockpitLocalPosition;
+            cockpitVisual.transform.localRotation = Quaternion.identity;
+        }
+
+        if (droneVisual != null && droneRoot != null && droneVisual.transform.parent != droneRoot)
+        {
+            droneVisual.transform.SetParent(droneRoot, false);
+            droneVisual.transform.localPosition = Vector3.zero;
+            droneVisual.transform.localRotation = Quaternion.identity;
+        }
     }
 
     private GameObject CreateCockpitVisual()
     {
         var cockpitRoot = new GameObject("Virtual Cockpit");
-        cockpitRoot.transform.SetParent(viewCamera.transform, false);
-        cockpitRoot.transform.localPosition = new Vector3(0f, -0.4f, 0.55f);
+        cockpitRoot.transform.localPosition = CockpitLocalPosition;
+        cockpitRoot.transform.localRotation = Quaternion.identity;
 
-        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cube, "Dash", new Vector3(0f, -0.1f, 0f), new Vector3(0.9f, 0.08f, 0.25f));
-        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cylinder, "Left Rail", new Vector3(-0.35f, 0.05f, 0.05f), new Vector3(0.03f, 0.25f, 0.03f));
-        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cylinder, "Right Rail", new Vector3(0.35f, 0.05f, 0.05f), new Vector3(0.03f, 0.25f, 0.03f));
-        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cube, "Canopy", new Vector3(0f, 0.25f, 0.25f), new Vector3(0.75f, 0.02f, 0.45f));
+        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cube, "Dash", new Vector3(0f, -0.32f, 0.45f), new Vector3(0.95f, 0.08f, 0.26f), new Color(0.14f, 0.14f, 0.16f));
+        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cylinder, "Left Rail", new Vector3(-0.38f, -0.05f, 0.32f), new Vector3(0.025f, 0.3f, 0.025f), new Vector3(0f, 0f, 0f), Color.black);
+        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cylinder, "Right Rail", new Vector3(0.38f, -0.05f, 0.32f), new Vector3(0.025f, 0.3f, 0.025f), new Vector3(0f, 0f, 0f), Color.black);
+        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cube, "Canopy Front", new Vector3(0f, 0.12f, 0.74f), new Vector3(0.82f, 0.32f, 0.02f), new Color(0.52f, 0.82f, 0.95f, 0.45f));
+        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cube, "Canopy Top", new Vector3(0f, 0.43f, 0.32f), new Vector3(0.84f, 0.02f, 0.92f), new Color(0.52f, 0.82f, 0.95f, 0.32f));
+        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cube, "Seat Back", new Vector3(0f, 0.02f, -0.12f), new Vector3(0.38f, 0.42f, 0.04f), new Color(0.1f, 0.1f, 0.1f));
+        CreatePrimitive(cockpitRoot.transform, PrimitiveType.Cube, "Seat Base", new Vector3(0f, -0.24f, 0.02f), new Vector3(0.34f, 0.04f, 0.3f), new Color(0.1f, 0.1f, 0.1f));
 
         cockpitRoot.SetActive(false);
         return cockpitRoot;
@@ -181,12 +229,13 @@ public class DroneViewModeController : MonoBehaviour
     private GameObject CreateDroneVisual()
     {
         var droneRootVisual = new GameObject("Drone Body Visual");
-        droneRootVisual.transform.SetParent(droneRoot, false);
         droneRootVisual.transform.localPosition = Vector3.zero;
+        droneRootVisual.transform.localRotation = Quaternion.identity;
 
-        CreatePrimitive(droneRootVisual.transform, PrimitiveType.Cube, "Core", new Vector3(0f, 0f, 0f), new Vector3(0.3f, 0.08f, 0.3f));
-        CreatePrimitive(droneRootVisual.transform, PrimitiveType.Cylinder, "Arm A", new Vector3(0f, 0f, 0f), new Vector3(0.03f, 0.35f, 0.03f), new Vector3(0f, 0f, 45f));
-        CreatePrimitive(droneRootVisual.transform, PrimitiveType.Cylinder, "Arm B", new Vector3(0f, 0f, 0f), new Vector3(0.03f, 0.35f, 0.03f), new Vector3(0f, 0f, -45f));
+        CreatePrimitive(droneRootVisual.transform, PrimitiveType.Cube, "Core", Vector3.zero, new Vector3(0.3f, 0.08f, 0.3f), new Color(0.18f, 0.18f, 0.18f));
+        CreatePrimitive(droneRootVisual.transform, PrimitiveType.Cylinder, "Arm A", Vector3.zero, new Vector3(0.03f, 0.35f, 0.03f), new Vector3(0f, 0f, 45f), new Color(0.1f, 0.1f, 0.1f));
+        CreatePrimitive(droneRootVisual.transform, PrimitiveType.Cylinder, "Arm B", Vector3.zero, new Vector3(0.03f, 0.35f, 0.03f), new Vector3(0f, 0f, -45f), new Color(0.1f, 0.1f, 0.1f));
+        CreatePrimitive(droneRootVisual.transform, PrimitiveType.Cube, "Nose", new Vector3(0f, 0.02f, 0.24f), new Vector3(0.08f, 0.05f, 0.12f), new Color(1f, 0.45f, 0.18f));
 
         var propOffsets = new[]
         {
@@ -203,7 +252,8 @@ public class DroneViewModeController : MonoBehaviour
                 PrimitiveType.Sphere,
                 $"Prop {index + 1}",
                 propOffsets[index],
-                Vector3.one * 0.12f);
+                Vector3.one * 0.12f,
+                index < 2 ? new Color(0.16f, 0.16f, 0.16f) : new Color(0.22f, 0.22f, 0.22f));
         }
 
         droneRootVisual.SetActive(false);
@@ -217,11 +267,18 @@ public class DroneViewModeController : MonoBehaviour
         if (cameraOffset != null)
         {
             cameraOffset.localPosition = defaultCameraOffsetLocalPosition;
-            cameraOffset.localRotation = Quaternion.identity;
+            cameraOffset.localRotation = defaultCameraOffsetLocalRotation;
         }
 
-        cockpitVisual.SetActive(nextMode == ViewMode.Cockpit);
-        droneVisual.SetActive(nextMode == ViewMode.Chase);
+        if (cockpitVisual != null)
+        {
+            cockpitVisual.SetActive(nextMode == ViewMode.Cockpit);
+        }
+
+        if (droneVisual != null)
+        {
+            droneVisual.SetActive(nextMode == ViewMode.Chase);
+        }
 
         if (nextMode == ViewMode.Chase && cameraOffset != null)
         {
@@ -249,7 +306,18 @@ public class DroneViewModeController : MonoBehaviour
         Vector3 localPosition,
         Vector3 localScale)
     {
-        CreatePrimitive(parent, primitiveType, objectName, localPosition, localScale, Vector3.zero);
+        CreatePrimitive(parent, primitiveType, objectName, localPosition, localScale, Vector3.zero, null);
+    }
+
+    private static void CreatePrimitive(
+        Transform parent,
+        PrimitiveType primitiveType,
+        string objectName,
+        Vector3 localPosition,
+        Vector3 localScale,
+        Color color)
+    {
+        CreatePrimitive(parent, primitiveType, objectName, localPosition, localScale, Vector3.zero, color);
     }
 
     private static void CreatePrimitive(
@@ -260,12 +328,49 @@ public class DroneViewModeController : MonoBehaviour
         Vector3 localScale,
         Vector3 localEulerAngles)
     {
+        CreatePrimitive(parent, primitiveType, objectName, localPosition, localScale, localEulerAngles, null);
+    }
+
+    private static void CreatePrimitive(
+        Transform parent,
+        PrimitiveType primitiveType,
+        string objectName,
+        Vector3 localPosition,
+        Vector3 localScale,
+        Vector3 localEulerAngles,
+        Color? color)
+    {
         var child = GameObject.CreatePrimitive(primitiveType);
         child.name = objectName;
         child.transform.SetParent(parent, false);
         child.transform.localPosition = localPosition;
         child.transform.localScale = localScale;
         child.transform.localEulerAngles = localEulerAngles;
+
+        if (color.HasValue)
+        {
+            var renderer = child.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                var shader = Shader.Find("Standard");
+                if (shader == null)
+                {
+                    shader = Shader.Find("Universal Render Pipeline/Lit");
+                }
+
+                if (shader == null)
+                {
+                    shader = Shader.Find("Unlit/Color");
+                }
+
+                if (shader != null)
+                {
+                    var material = new Material(shader);
+                    material.color = color.Value;
+                    renderer.material = material;
+                }
+            }
+        }
 
         var collider = child.GetComponent<Collider>();
         if (collider != null)

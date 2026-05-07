@@ -856,6 +856,12 @@ public class RaceTrackManager : MonoBehaviour
             ? 0
             : Mathf.Clamp(lastClearedCheckpointIndex + 1, 0, checkpoints.Count);
         var checkpointProgressLine = $"Checkpoints passed: {checkpointsPassed}/{checkpoints.Count}";
+        var viewModeLine = viewModeController != null
+            ? $"View mode: {viewModeController.CurrentModeLabel}"
+            : "View mode: --";
+        var gestureLine = viewModeController != null
+            ? viewModeController.GestureHint
+            : "Hand gesture: --";
 
         var bestTimeLine = bestTime > 0f
             ? $"Best time: {bestTime:0.00}s"
@@ -877,10 +883,12 @@ public class RaceTrackManager : MonoBehaviour
             $"Track: {loadedTrackLabel}\n" +
             $"Time: {displayedTime:0.00}s\n" +
             $"{bestTimeLine}\n" +
+            $"{viewModeLine}\n" +
             $"{checkpointProgressLine}\n" +
             $"{nextCheckpointLine}\n" +
             $"{distanceLine}\n" +
             $"{countdownLine}\n" +
+            $"{gestureLine}\n" +
             $"{statusMessage}";
         hudText.ForceMeshUpdate();
     }
