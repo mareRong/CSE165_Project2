@@ -43,6 +43,7 @@ public class Gameplay : MonoBehaviour
     private TMP_Text countdownText;
     private DroneRaceAudio raceAudio;
     private DroneViewModeController viewModeController;
+    private RaceTrackManager raceTrackManager;
 
     private void Start()
     {
@@ -62,6 +63,13 @@ public class Gameplay : MonoBehaviour
         {
             travelScript.canMove = false;
             travelScript.TriggerEntered += HandleDroneTriggerEntered;
+        }
+
+        raceTrackManager = FindObjectOfType<RaceTrackManager>();
+        if (raceTrackManager == null)
+        {
+            GameObject trackObject = new GameObject("Race Track");
+            raceTrackManager = trackObject.AddComponent<RaceTrackManager>();
         }
 
         raceAudio = drone.GetComponent<DroneRaceAudio>();
@@ -344,7 +352,7 @@ public class Gameplay : MonoBehaviour
             ? "View: " + viewModeController.CurrentModeLabel
             : "View: --";
         string audioString = raceAudio != null
-            ? "Audio: " + raceAudio.DebugStatus
+            ? "Audio: " + SummarizeAudioStatus(raceAudio.DebugStatus)
             : "Audio: --";
 
         if (raceFinished)
@@ -380,6 +388,24 @@ public class Gameplay : MonoBehaviour
             audioString +
             "\n" +
             currentMessage;
+    }
+
+    private string SummarizeAudioStatus(string debugStatus)
+    {
+        if (string.IsNullOrWhiteSpace(debugStatus))
+            return "--";
+
+        bool engineReady = debugStatus.Contains("engineSrc:True");
+        bool enginePlaying = debugStatus.Contains("playing:True");
+        bool sfxReady = debugStatus.Contains("sfxSrc:True");
+
+        if (engineReady && enginePlaying && sfxReady)
+            return "active";
+
+        if (engineReady || sfxReady)
+            return "partial";
+
+        return "missing";
     }
 
     private void CompleteCheckpoint(int checkpointIndex)
