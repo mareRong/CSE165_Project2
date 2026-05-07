@@ -22,8 +22,8 @@ public class DroneViewModeController : MonoBehaviour
     private static readonly Vector3 ChaseOffset = new Vector3(0f, 2.2f, -5.5f);
     private static readonly Vector3 CockpitLocalPosition = new Vector3(0f, 0f, 0f);
     private static readonly Vector3 ImportedCockpitLocalScale = new Vector3(0.16f, 0.16f, 0.16f);
-    private static readonly Vector3 DesiredSeatAnchorPosition = new Vector3(0f, -0.55f, -0.15f);
-    private static readonly Vector3 DesiredPanelAnchorPosition = new Vector3(0f, -0.08f, 0.42f);
+    private static readonly Vector3 DesiredSeatAnchorPosition = new Vector3(0f, -0.6f, -0.05f);
+    private static readonly Vector3 DesiredPanelAnchorPosition = new Vector3(0f, -0.12f, 0.55f);
     private static readonly Vector3 ImportedDroneVisualScale = new Vector3(0.16f, 0.16f, 0.16f);
 
     private Transform droneRoot;
@@ -490,27 +490,29 @@ public class DroneViewModeController : MonoBehaviour
 
     private static void AlignImportedCockpit(Transform parentRoot, Transform modelRoot)
     {
-        AlignImportedModelForward(parentRoot, modelRoot);
-
         var seatAnchor = FindChildByName(modelRoot, "Seat");
         var panelAnchor = FindChildByName(modelRoot, "Panel");
-
-        if (seatAnchor != null)
+        if (seatAnchor == null || panelAnchor == null)
         {
-            var seatLocalPosition = parentRoot.InverseTransformPoint(seatAnchor.position);
-            modelRoot.localPosition += DesiredSeatAnchorPosition - seatLocalPosition;
-        }
-        else if (panelAnchor != null)
-        {
-            var panelLocalPosition = parentRoot.InverseTransformPoint(panelAnchor.position);
-            modelRoot.localPosition += DesiredPanelAnchorPosition - panelLocalPosition;
+            AlignImportedModelForward(parentRoot, modelRoot);
+            return;
         }
 
-        if (panelAnchor != null)
+        var seatModelPosition = seatAnchor.localPosition;
+        var panelModelPosition = panelAnchor.localPosition;
+        var localForward = panelModelPosition - seatModelPosition;
+        localForward.y = 0f;
+        if (localForward.sqrMagnitude > 0.0001f)
         {
-            var panelLocalPosition = parentRoot.InverseTransformPoint(panelAnchor.position);
-            modelRoot.localPosition += new Vector3(0f, 0f, DesiredPanelAnchorPosition.z - panelLocalPosition.z);
+            var signedAngle = Vector3.SignedAngle(localForward.normalized, Vector3.forward, Vector3.up);
+            modelRoot.localRotation = Quaternion.Euler(0f, signedAngle, 0f);
         }
+
+        var rotatedSeatPosition = modelRoot.localRotation * Vector3.Scale(seatModelPosition, modelRoot.localScale);
+        modelRoot.localPosition = DesiredSeatAnchorPosition - rotatedSeatPosition;
+
+        var rotatedPanelPosition = modelRoot.localPosition + (modelRoot.localRotation * Vector3.Scale(panelModelPosition, modelRoot.localScale));
+        modelRoot.localPosition += DesiredPanelAnchorPosition - rotatedPanelPosition;
     }
 
     private static void AlignImportedModelForward(Transform parentRoot, Transform modelRoot)

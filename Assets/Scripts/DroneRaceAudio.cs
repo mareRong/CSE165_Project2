@@ -14,8 +14,8 @@ public class DroneRaceAudio : MonoBehaviour
     [SerializeField] private float maxExpectedSpeed = 2.6f;
     [SerializeField] private float engineBasePitch = 0.72f;
     [SerializeField] private float enginePitchRange = 1.05f;
-    [SerializeField] private float engineBaseVolume = 0.04f;
-    [SerializeField] private float engineVolumeRange = 0.2f;
+    [SerializeField] private float engineBaseVolume = 0.12f;
+    [SerializeField] private float engineVolumeRange = 0.38f;
     [SerializeField] private float engineResponsiveness = 6f;
 
     private AudioSource engineSource;
@@ -118,6 +118,8 @@ public class DroneRaceAudio : MonoBehaviour
             engineSource.spatialBlend = 0f;
             engineSource.volume = 0f;
             engineSource.pitch = engineBasePitch;
+            engineSource.ignoreListenerPause = true;
+            engineSource.bypassListenerEffects = true;
         }
 
         if (sfxSource == null)
@@ -127,14 +129,16 @@ public class DroneRaceAudio : MonoBehaviour
             sfxSource.loop = false;
             sfxSource.spatialBlend = 0f;
             sfxSource.volume = 1f;
+            sfxSource.ignoreListenerPause = true;
+            sfxSource.bypassListenerEffects = true;
         }
     }
 
     private void EnsureClips()
     {
         engineClip ??= CreateEngineLoopClip();
-        checkpointClip ??= CreateDualToneClip("Checkpoint", 0.28f, 880f, 1320f, 0.15f);
-        crashClip ??= CreateNoiseBurstClip("Crash", 0.55f, 0.28f, 160f);
+        checkpointClip ??= CreateDualToneClip("Checkpoint", 0.32f, 880f, 1320f, 0.32f);
+        crashClip ??= CreateNoiseBurstClip("Crash", 0.55f, 0.42f, 160f);
         finishClip ??= CreateFinishClip();
 
         engineSource.clip = engineClip;
