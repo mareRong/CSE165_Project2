@@ -17,8 +17,8 @@ public class RaceTrackManager : MonoBehaviour
     private const string DefaultTrackAnchorName = "machu_picchu_2";
 
     [Header("Track Loading")]
-    [SerializeField] private string preferredTrackFileName = "competition.xyz";
-    [SerializeField] private string fallbackTrackFileName = "sample_track.xyz";
+    [SerializeField] private string preferredTrackFileName = "sample_track.xyz";
+    [SerializeField] private string fallbackTrackFileName = "competition.xyz";
     [SerializeField] private bool allowProceduralFallback = false;
     [SerializeField] private bool interpretTrackCoordinatesAsModelLocal = true;
     [SerializeField] private bool snapCheckpointHeightToSurface = false;
